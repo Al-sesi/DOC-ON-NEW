@@ -3,6 +3,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const app = express();
 require("dotenv").config();
+const paymentRouter = require("./routes/payment.route");
 let doctorRouter = require("./routes/doctor.route");
 let patientRouter = require("./routes/patient.route");
 const cors = require("cors");
@@ -30,6 +31,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use("/doctor", doctorRouter);
 app.use("/patient", patientRouter);
+app.use("/payment", paymentRouter);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Variable Declarations
