@@ -2,11 +2,10 @@
 const express = require("express");
 const router = express.Router();
 
-
 const {
   initializePayment,
-  verifyPayment
-} = require("../controllers/payment.controller");
+  verifyPayment,
+} = require("../controller/payment.controller");
 
 // Routes
 router.post("/initialize", initializePayment);
