@@ -1,54 +1,18 @@
-// List of imports
 const express = require("express");
-const mongoose = require("mongoose");
-const app = express();
+const connectDB = require("./config/database_config");
 require("dotenv").config();
-const paymentRouter = require("./routes/payment.route");
-let doctorRouter = require("./routes/doctor.route");
-let patientRouter = require("./routes/patient.route");
-const cors = require("cors");
-const doctorModel = require("./models/doctor.model");
-const patientModel = require("./models/patient.model");
-const multer = require("multer");
-const path = require("path");
-const { swaggerUi, swaggerSpec } = require("./swagger");
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/");
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  },
-});
-
-const upload = multer({ storage });
-
-// Middleware
-// app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-app.use(cors());
-app.use(express.urlencoded({ extended: true }));
+const app = express();
 app.use(express.json());
-app.use("/doctor", doctorRouter);
-app.use("/patient", patientRouter);
-app.use("/payment", paymentRouter);
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Variable Declarations
-let PORT = process.env.PORT;
-let URI = process.env.URI;
+const port = process.env.PORT || 5000;
 
-mongoose
-  .connect(URI)
+connectDB()
   .then(() => {
-    console.log("mongodb success");
+    app.listen(port, () => {
+      console.log(`Server is now live on PORT: ${port}`);
+    });
   })
-  .catch((err) => {
-    console.log(err);
-    console.log("error encountered");
+  .catch((e) => {
+    console.log(`e`);
   });
-
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-  console.log(`Swagger docs available at http://localhost:${PORT}/api-docs`);
-});

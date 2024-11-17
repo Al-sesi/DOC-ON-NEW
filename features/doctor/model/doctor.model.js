@@ -9,13 +9,13 @@ const doctorSchema = new mongoose.Schema(
     medicalLicenseNumber: { type: String, required: true, unique: true },
     yearsOfExperience: { type: String, required: true },
     gender: { type: String, required: true },
+    email: { type: String, unique: true, required: true },
+    phoneNumber: { type: String, required: true },
 
     contactInformation: [
       {
         address: { type: String, required: true },
         preferredLanguage: { type: String, required: true },
-        email: { type: String, unique: true, required: true },
-        phoneNumber: { type: String, required: true },
       },
     ],
     credentials: [

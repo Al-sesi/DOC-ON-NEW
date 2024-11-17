@@ -15,11 +15,10 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-
 const {
   registerPatient,
   signInPatient,
-} = require("../controllers/patient.controller");
+} = require("../controller/patient.controller");
 
 // Routes
 router.post("/register", upload.single("idProof"), registerPatient);
