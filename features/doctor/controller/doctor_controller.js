@@ -171,7 +171,7 @@ const updateDoctorProfile = async (req, res) => {
 
     // Respond with success and updated profile
     res.status(200).json({
-      title: "Clodocs Doctor Update Profile",
+      title: "DOC-ON Doctor Update Profile",
       status: 200,
       successful: true,
       message: "You have successfully updated your profile.",
@@ -209,9 +209,57 @@ const doctorProfile = async (req, res) => {
   }
 };
 
+const updatePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const doctor = await doctorModel.findOne({ docOnID: req.doctor.docOnID });
+    if (!doctor) {
+      res.status(404).json({
+        title: "Doctor Not Found",
+        message:
+          "Please make sure you are logged in as a doctor before you can be able to perfom this action",
+      });
+    } else {
+      const isOldPassword = await bcrypt.compare(oldPassword, doctor.password);
+      if (!isOldPassword) {
+        res.status(400).json({
+          title: "Wrong Old Password",
+          message:
+            "Please make sure you provide us with you actual previouse password",
+        });
+      } else {
+        const salt = await bcrypt.genSalt(10);
+        const hashNewPassword = await bcrypt.hash(newPassword, salt);
+        const updateDocPassword = doctorModel.findOneAndUpdate(
+          { docOnID: doctor.docOnID },
+          { password: hashNewPassword }
+        );
+        if (!updateDocPassword) {
+          res.status(400).json({
+            title: "Password Update Failed",
+            message:
+              "Sorry, but we are unable to update your password at the moment, please try again later. Thank You",
+          });
+        } else {
+          res.status(200).json({
+            title: "Password Updated Successfully",
+            message: "You have successfully updated your password",
+          });
+        }
+      }
+    }
+  } catch (e) {
+    res.status(500).json({
+      title: "Server Error",
+      message: `Server Error: ${e}`,
+    });
+  }
+};
+
 module.exports = {
   registerDoctor,
   signInDoctor,
   updateDoctorProfile,
   doctorProfile,
+  updatePassword,
 };

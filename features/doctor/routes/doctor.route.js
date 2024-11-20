@@ -14,5 +14,10 @@ router.put(
   doctorAccessTokenValidator,
   DoctorController.updateDoctorProfile
 );
+router.put(
+  "/update-password",
+  doctorAccessTokenValidator,
+  DoctorController.updatePassword
+);
 
 module.exports = router;
