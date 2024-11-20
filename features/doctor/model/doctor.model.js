@@ -2,6 +2,9 @@ const mongoose = require("mongoose");
 
 const doctorSchema = new mongoose.Schema(
   {
+    docOnID: {
+      type: String,
+    },
     title: { type: String, required: true },
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
