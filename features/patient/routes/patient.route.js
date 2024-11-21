@@ -1,27 +1,23 @@
-// List of imports
-const express = require("express");
-const router = express.Router();
-const multer = require("multer");
-const fs = require("fs");
-const path = require("path");
+const router = require("express").Router();
+const PatientController = require("../controller/patient_controller");
+const patientAccessTokenValidator = require("../../../middleware/patient_access_token_validator");
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/");
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  },
-});
-const upload = multer({ storage });
-
-const {
-  registerPatient,
-  signInPatient,
-} = require("../controller/patient.controller");
-
-// Routes
-router.post("/register", upload.single("idProof"), registerPatient);
-router.post("/login", signInPatient);
+router.post("/register", PatientController.registerPatient);
+router.post("/login", PatientController.patientLogin);
+router.put(
+  "/update-password",
+  patientAccessTokenValidator,
+  PatientController.updatePassword
+);
+router.put(
+  "/update-profile",
+  patientAccessTokenValidator,
+  PatientController.updatePatientProfile
+);
+router.get(
+  "/patient-profile",
+  patientAccessTokenValidator,
+  PatientController.patientProfile
+);
 
 module.exports = router;

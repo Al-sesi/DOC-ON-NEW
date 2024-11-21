@@ -1,9 +1,13 @@
 const mongoose = require("mongoose");
 
-let patientSchema = new mongoose.Schema(
+const patientSchema = new mongoose.Schema(
   {
+    patientID: {
+      type: String,
+    },
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
+    otherNames: { type: String, required: true },
     email: { type: String, unique: true },
     phoneNumber: { type: String, required: true },
     dateOfBirth: { type: String, required: true },
@@ -17,12 +21,6 @@ let patientSchema = new mongoose.Schema(
     ],
 
     password: { type: String, required: true },
-
-    verification: [
-      {
-        idProof: { type: String, required: true },
-      },
-    ],
   },
   { timestamps: true }
 );
