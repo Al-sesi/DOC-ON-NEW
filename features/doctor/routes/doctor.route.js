@@ -20,4 +20,21 @@ router.put(
   DoctorController.updatePassword
 );
 
+router.post("/forgot-password", DoctorController.forgotPassword);
+router.post(
+  "/reset-password",
+  DoctorController.verifyResetPasswordOTPAndResetPassword
+);
+
+router.post(
+  "/send-email-otp",
+  doctorAccessTokenValidator,
+  DoctorController.verifyAccountEmail
+);
+router.post(
+  "/verify-email-otp",
+  doctorAccessTokenValidator,
+  DoctorController.verifyEmailAddressWithOTP
+);
+
 module.exports = router;
