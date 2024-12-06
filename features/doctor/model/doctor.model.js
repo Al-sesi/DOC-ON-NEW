@@ -14,6 +14,13 @@ const doctorSchema = new mongoose.Schema(
     gender: { type: String, required: true },
     email: { type: String, unique: true, required: true },
     phoneNumber: { type: String, required: true },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    //for OTPs
+    otpCode: { type: String },
+    otpExpires: { type: Date },
 
     contactInformation: [
       {

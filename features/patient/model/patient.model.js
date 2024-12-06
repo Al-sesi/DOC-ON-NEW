@@ -21,6 +21,13 @@ const patientSchema = new mongoose.Schema(
     ],
 
     password: { type: String, required: true },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    //for OTPs
+    otpCode: { type: String },
+    otpExpires: { type: Date },
   },
   { timestamps: true }
 );

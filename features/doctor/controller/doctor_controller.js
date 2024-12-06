@@ -2,6 +2,7 @@ let doctorModel = require("../model/doctor.model");
 let jwt = require("jsonwebtoken");
 const { v4 } = require("uuid");
 const bcrypt = require("bcryptjs");
+const Mailer = require("../../../config/mailer_config");
 
 const registerDoctor = async (req, res) => {
   try {
@@ -256,10 +257,184 @@ const updatePassword = async (req, res) => {
   }
 };
 
+//reset user password
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const isRegisteredEmail = await doctorModel.findOne({ email: email });
+    if (!isRegisteredEmail) {
+      res.status(400).json({
+        title: "Email Does Not Exist",
+        message: "The email you provided does not exist",
+      });
+    } else {
+      const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+      // Set code expiration time (2 minutes)
+      const resetExpires = Date.now() + 2 * 60 * 1000;
+      isRegisteredEmail.otpCode = resetCode;
+      isRegisteredEmail.otpExpires = resetExpires;
+      await isRegisteredEmail.save();
+
+      await Mailer.sendEmail(
+        email,
+        "Forgot Password OTP",
+        `Hello ${isRegisteredEmail.firstName.trim()} ${isRegisteredEmail.lastName.trim()} ${isRegisteredEmail.otherNames.trim()}, your ODC-ON reset password OTP is: \"${resetCode}\ and it will expire in 2 minutes"`
+      );
+      res.status(200).json({
+        title: "OTP Sent",
+        message: "A 6 digit OTP code has been sent to your email",
+      });
+    }
+  } catch (e) {
+    console.log(e);
+    res.status(500).json({
+      title: "Server Error",
+      message: `Server Error: ${e}`,
+    });
+  }
+};
+
+const verifyResetPasswordOTPAndResetPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    const doctor = await doctorModel.findOne({ email: email });
+    if (doctor.otpCode !== otp) {
+      res.status(400).json({
+        title: "Invalid OTP",
+        message:
+          "The OTP you provided is does not match the one we sent you, please check your email and try again",
+      });
+    } else {
+      if (doctor.otpExpires < Date.now()) {
+        res.status(400).json({
+          title: "Expired OTP",
+          message:
+            "The OTP you provided us has expired, please request for another OTP",
+        });
+      } else {
+        const salt = await bcrypt.genSalt(10);
+        const encryptPassword = await bcrypt.hash(newPassword, salt);
+        doctor.password = encryptPassword;
+        doctor.otpCode = undefined;
+        doctor.otpExpires = undefined;
+        const updatePassword = await doctor.save();
+        if (updatePassword) {
+          res.status(200).json({
+            title: "Password Chaneged Successfully",
+            message:
+              "You have successfully changed your password, you can now go and login",
+          });
+        } else {
+          res.status(200).json({
+            title: "Unable To Change Password",
+            message:
+              "Sorry we are unable to change your password at the moment, please try again later thank you.",
+          });
+        }
+      }
+    }
+  } catch (e) {
+    console.log(e);
+    res.status(500).json({
+      title: "Server Error",
+      message: `Server Error: ${e}`,
+    });
+  }
+};
+
+//verify email
+const verifyAccountEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const isRegisteredEmail = await doctorModel.findOne({ email: email });
+    if (!isRegisteredEmail) {
+      res.status(400).json({
+        title: "Email Does Not Exist",
+        message: "The email you provided does not exist",
+      });
+    } else {
+      const verificationCode = Math.floor(
+        100000 + Math.random() * 900000
+      ).toString();
+
+      const verificationCodeExpires = Date.now() + 2 * 60 * 1000;
+      isRegisteredEmail.otpCode = verificationCode;
+      isRegisteredEmail.otpExpires = verificationCodeExpires;
+      await isRegisteredEmail.save();
+
+      Mailer.sendEmail(
+        email,
+        "Account Email Verification",
+        `Hello ${isRegisteredEmail.firstName.trim()} ${isRegisteredEmail.lastName.trim()} ${isRegisteredEmail.otherNames.trim()}, your DOC-ON account email verification code is: \"${verificationCode}\" and it will expire in 2 minutes.`
+      );
+      res.status(200).json({
+        title: "OTP Sent",
+        message: "A 6 digit OTP code has been sent to your email",
+      });
+    }
+  } catch (e) {
+    res.status(500).json({
+      title: "Server Error",
+      message: `Server Error: ${e}`,
+    });
+  }
+};
+
+const verifyEmailAddressWithOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    const doctor = await doctorModel.findOne({ email: email });
+    if (doctor.otpCode !== otp) {
+      res.status(400).json({
+        title: "Invalid OTP",
+        message:
+          "The OTP you provided is does not match the one we sent you, please check your email and try again",
+      });
+    } else {
+      if (doctor.otpExpires < Date.now()) {
+        res.status(400).json({
+          title: "Expired OTP",
+          message:
+            "The OTP you provided us has expired, please request for another OTP",
+        });
+      } else {
+        doctor.isEmailVerified = true;
+        doctor.otpCode = undefined;
+        doctor.otpExpires = undefined;
+        const isSuccessful = await doctor.save();
+        if (isSuccessful) {
+          res.status(200).json({
+            title: "Email Verified Successfully",
+            message:
+              "You have successfully verified your email address and also increased your account security",
+          });
+        } else {
+          res.status(200).json({
+            title: "Unable To Verify Your Email",
+            message:
+              "Sorry we are unable to verify your email at the moment, please try again later thank you.",
+          });
+        }
+      }
+    }
+  } catch (e) {
+    console.log(e);
+    res.status(500).json({
+      title: "Server Error",
+      message: `Server Error: ${e}`,
+    });
+  }
+};
+
 module.exports = {
   registerDoctor,
   signInDoctor,
   updateDoctorProfile,
   doctorProfile,
   updatePassword,
+  forgotPassword,
+  verifyResetPasswordOTPAndResetPassword,
+  verifyAccountEmail,
+  verifyEmailAddressWithOTP,
 };
