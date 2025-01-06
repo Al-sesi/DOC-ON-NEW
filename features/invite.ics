@@ -1,0 +1,52 @@
+BEGIN:VCALENDAR
+PRODID:-//Google Inc//Google Calendar 70.9054//EN
+VERSION:2.0
+CALSCALE:GREGORIAN
+METHOD:REQUEST
+BEGIN:VTIMEZONE
+TZID:America/New_York
+X-LIC-LOCATION:America/New_York
+BEGIN:DAYLIGHT
+TZOFFSETFROM:-0500
+TZOFFSETTO:-0400
+TZNAME:EDT
+DTSTART:19700308T020000
+RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU
+END:DAYLIGHT
+BEGIN:STANDARD
+TZOFFSETFROM:-0400
+TZOFFSETTO:-0500
+TZNAME:EST
+DTSTART:19701101T020000
+RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+DTSTART;TZID=America/New_York:20250108T133000
+DTEND;TZID=America/New_York:20250108T134500
+DTSTAMP:20250105T114243Z
+ORGANIZER;CN=CEO Director:mailto:kdnsportsline@gmail.com
+UID:m0dkfc3qtlkl191m33slrqhcqg@google.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
+ ;CN=jameze49@gmail.com;X-NUM-GUESTS=0:mailto:jameze49@gmail.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
+ ;CN=CEO Director;X-NUM-GUESTS=0:mailto:kdnsportsline@gmail.com
+X-GOOGLE-CONFERENCE:https://meet.google.com/jto-ekbt-tsv
+X-MICROSOFT-CDO-OWNERAPPTID:-1347172475
+CREATED:20250105T114240Z
+DESCRIPTION:<b>Booked by</b>\nJames Son\njameze49@gmail.com\n<br><b>Positio
+ n</b>\nBackend Developer \n\n-::~:~::~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:
+ ~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~::~:~::-\nJoin with Google Meet: https://m
+ eet.google.com/jto-ekbt-tsv\nOr dial: (US) +1 352-537-8060 PIN: 603171498#\
+ nMore phone numbers: https://tel.meet/jto-ekbt-tsv?pin=9032970523504&hs=7\n
+ \nLearn more about Meet at: https://support.google.com/a/users/answer/92827
+ 20\n\nPlease do not edit this section.\n-::~:~::~:~:~:~:~:~:~:~:~:~:~:~:~:~
+ :~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~::~:~::-
+LAST-MODIFIED:20250105T114242Z
+LOCATION:
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:Technical Interview Appointment (James Son)
+TRANSP:OPAQUE
+END:VEVENT
+END:VCALENDAR
