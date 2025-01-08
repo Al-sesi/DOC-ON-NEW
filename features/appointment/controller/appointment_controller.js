@@ -1,13 +1,14 @@
-const Appointment = require("../models/Appointment");
-const Doctor = require("../doctor/model/doctor.model.js");
-const Patient = require("../patient/model/patient.model.js");
-const Appointment = require("../models/Appointment");
-const patientAccessTokenValidator = require("../../../middleware/patient_access_token_validator");
-const { sendSMS, createTwilioRoomAndToken } = require("../utilts/appointment_utils");
+const Appointment = require("../model/appointment_model.js");
+const Doctor = require("../../doctor/model/doctor.model.js");
+const Patient = require("../../patient/model/patient.model.js");
+const {
+  sendSMS,
+  createTwilioRoomAndToken,
+} = require("../utils/appointment_utils.js");
 const Mailer = require("../../../config/mailer_config");
 
 // Search and filter appointments
-exports.searchAppointments = async (req, res) => {
+const searchAppointments = async (req, res) => {
   try {
     const { date, time, specialty, doctorId } = req.query;
     const filters = { status: "available" };
@@ -27,10 +28,10 @@ exports.searchAppointments = async (req, res) => {
 };
 
 //Book new appointment
-exports.bookAppointment = async (req, res) => {
+const bookAppointment = async (req, res) => {
   try {
     const { doctorId, date, time, specialty } = req.body;
-    const patientId=req.patient.patientID
+    const patientId = req.patient.patientID;
     // Validate input
     if (!doctorId || !patientId || !date || !time || !specialty) {
       return res.status(400).json({ message: "All fields are required" });
@@ -44,7 +45,10 @@ exports.bookAppointment = async (req, res) => {
 
     // Create Twilio Video room and token
     const roomName = `appointment_${doctorId}_${Date.now()}`;
-    const { telehealthLink } = await createTwilioRoomAndToken(roomName, patientName);
+    const { telehealthLink } = await createTwilioRoomAndToken(
+      roomName,
+      patientName
+    );
 
     // Create and save appointment
     const appointment = new Appointment({
@@ -56,43 +60,47 @@ exports.bookAppointment = async (req, res) => {
       status: "booked",
       telehealthLink,
     });
-    
+
     await appointment.save();
-    
-   // Notify the patient and doctor
+
+    // Notify the patient and doctor
     await sendEmail(
       doctor.email,
       "You Have New Appointment Scheduled",
       `<p>You have a new appointment with ${req.patient.phoneNumber} on ${date} at ${time}.</p>`
     );
-    
-      await Mailer.sendEmail(
-        email,
-        "Appointment Booked Successfully",
-        `Your appointment with Dr. ${doctor.name} is confirmed for ${date} at ${time}.`
-    )
-    
-    res.status(201).json({ message: "Appointment created successfully", appointment });
+
+    await Mailer.sendEmail(
+      email,
+      "Appointment Booked Successfully",
+      `Your appointment with Dr. ${doctor.name} is confirmed for ${date} at ${time}.`
+    );
+
+    res
+      .status(201)
+      .json({ message: "Appointment created successfully", appointment });
   } catch (error) {
     console.error("Error booking appointment:", error);
     res.status(500).json({ message: "Error booking appointment", error });
   }
 };
 
-
 // Waitlist management
-exports.addToWaitlist = async (req, res) => {
+const addToWaitlist = async (req, res) => {
   try {
     const { appointmentId, patientId } = req.body;
-    const doctorId=req.doctor.doctorID;
+    const doctorId = req.doctor.doctorID;
     const appointment = await Appointment.findById(appointmentId);
     if (req.appointment.status !== "booked") {
       return res.status(400).json({ error: "Appointment is not booked" });
     }
-    if (appointment.doctor!==doctorId) {
-      return res.status(401).json({ error: "Unauthorized access. Please make sure the appointment is booked with you" });
+    if (appointment.doctor !== doctorId) {
+      return res.status(401).json({
+        error:
+          "Unauthorized access. Please make sure the appointment is booked with you",
+      });
     }
-    appointment.status= appointment.waitlist || [];
+    appointment.status = appointment.waitlist || [];
     appointment.waitlist.push(patientId);
     await appointment.save();
     res.status(200).json({ message: "Added to waitlist" });
@@ -101,14 +109,17 @@ exports.addToWaitlist = async (req, res) => {
   }
 };
 
-exports.removeFromWaitlistAndReady = async (req, res) => {
+const removeFromWaitlistAndReady = async (req, res) => {
   try {
     const { appointmentId, patientId } = req.body;
-    const doctorId=req.doctor.doctorID;
+    const doctorId = req.doctor.doctorID;
     // Find the appointment by ID
     const appointment = await Appointment.findById(appointmentId);
-    if (appointment.doctor!==doctorId) {
-      return res.status(401).json({ error: "Unauthorized access. Please make sure the appointment is booked with you" });
+    if (appointment.doctor !== doctorId) {
+      return res.status(401).json({
+        error:
+          "Unauthorized access. Please make sure the appointment is booked with you",
+      });
     }
     // Check if the appointment exists
     if (!appointment) {
@@ -139,14 +150,20 @@ exports.removeFromWaitlistAndReady = async (req, res) => {
   }
 };
 
-
 // Display available slots
 //exports.getAvailableSlots = async (req, res) => {
 //  try {
- //   const { doctorId, date } = req.query;
- //   const slots = await Appointment.find({ doctor: doctorId, date, status: "available" });
-  //  res.status(200).json(slots);
- // } catch (error) {
-  //  res.status(500).json({ error: error.message });
- // }
+//   const { doctorId, date } = req.query;
+//   const slots = await Appointment.find({ doctor: doctorId, date, status: "available" });
+//  res.status(200).json(slots);
+// } catch (error) {
+//  res.status(500).json({ error: error.message });
+// }
 //};
+
+module.exports = {
+  removeFromWaitlistAndReady,
+  addToWaitlist,
+  bookAppointment,
+  searchAppointments,
+};
