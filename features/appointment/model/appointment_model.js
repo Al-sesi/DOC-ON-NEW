@@ -18,7 +18,8 @@ const appointmentSchema = new mongoose.Schema({
   },
   speciality:{type:String, required:true},
   status: { type: String, default: "available" },
-  telehealthLink:{type: String, required: true}
+  telehealthLink:{type: String, required: true},
+  accessToken:String
 });
 
 module.exports = mongoose.model("Appointment", appointmentSchema);
