@@ -1,245 +1,214 @@
-const Appointment = require("../model/appointment_model.js");
-const Doctor = require("../../doctor/model/doctor.model.js");
-const Patient = require("../../patient/model/patient.model.js");
-const {
-  sendSMS,
-  createTwilioRoomAndToken,
-} = require("../utils/appointment_utils.js");
+const Appointment = require("../models/Appointment");
+const Doctor = require("../doctor/model/doctor.model.js");
+const Patient = require("../patient/model/patient.model.js");
+const Appointment = require("../models/Appointment");
+const patientAccessTokenValidator = require("../../../middleware/patient_access_token_validator");
+const { sendSMS, createTwilioRoomAndToken } = require("../utilts/appointment_utils");
 const Mailer = require("../../../config/mailer_config");
+
 // Search and filter appointments
-const searchAppointments = async (req, res) => {
+exports.searchAppointments = async (req, res) => {
   try {
     const { date, time, specialty, doctorId } = req.query;
-    const patient = await Patient.findOne({ patientID: req.patient.patientID });
-    if (!patient) {
-      res.status(400).json({
-        title: "Login Required",
-        message: "You need to log in before accessing this route.",
-      });
-    } else {
-      const filters = { status: "available" };
-      if (date) {
-        filters.date = date;
-      } else if (time) {
-        filters.time = time;
-      } else if (specialty) {
-        const doctor = await Doctor.findOne({ specialty });
-        if (!doctor) {
-          res.status(404).json({
-            title: "Doctor Not Found",
-            message: `No doctor found with specialty: ${specialty}`,
-          });
-        } else {
-          filters.doctor = doctor.docOnID;
-        }
-      } else if (doctorId) {
-        filters.doctor = doctorId;
-      }
-      const appointments = await Appointment.find(filters).populate("doctor");
-
-      if (appointments.length === 0) {
-        return res.status(404).json({
-          title: "No Appointments Found",
-          message: "No available appointments match your search criteria.",
-        });
-      } else {
-        res.status(200).json(appointments);
-      }
+    const filters = { status: "available" };
+    if (date) filters.date = date;
+    if (time) filters.time = time;
+    if (specialty) {
+      const doctor = await Doctor.findOne({ specialty });
+      filters.doctor = doctor._id;
     }
+    if (doctorId) filters.doctor = doctorId;
+
+    const appointments = await Appointment.find(filters).populate("doctor");
+    if(!appointments){
+     return res.status(400).json({
+          title: "Appointment Not Found",
+          message:
+            "The appointment with input query parameter is not available, please check your parameters and try again"
+        })
+    }
+    res.status(200).json(appointments);
   } catch (error) {
     res.status(500).json({
       title: "Server Error",
-      message: error.message,
+      message: `Server Error: ${error.message}`,
     });
   }
 };
 
 //Book new appointment
-const bookAppointment = async (req, res) => {
+exports.bookAppointment = async (req, res) => {
   try {
     const { doctorId, date, time, specialty } = req.body;
-    const patient = await Patient.findOne({
-      patientID: req.patient.patientID,
-    });
-    if (!patient) {
-      res.status(400).json({
-        title: "Login Required",
-        message: "You are expected to login before proceeding",
-      });
-    } else {
-      const doctor = await Doctor.findOne({ docOnID: doctorId });
-      if (!doctor) {
-        res.status(404).json({
-          title: "Doctor Not Found",
-          message: "The doctor you are booking on does not exit",
-        });
-      } else {
-        if (!date || !time || !specialty) {
-          res.status(400).json({
-            title: "Fields Required",
-            message: "All fields are required",
-          });
-        } else {
-          const roomName = `appointment_${doctorId}_${Date.now()}`;
-          const { telehealthLink } = await createTwilioRoomAndToken(
-            roomName,
-            patientName
-          );
-          const appointment = new Appointment({
-            doctor: doctorId,
-            patientId: patient.patientID,
-            date,
-            time,
-            specialty,
-            status: "booked",
-            telehealthLink,
-          });
-
-          const saveAppointment = await appointment.save();
-
-          if (!saveAppointment) {
-            res.status(400).json({
-              title: "Failed To Book Appointment",
-              message:
-                "Sorry, we are unable to book this appointment at the moment, please try again later. Thannk You",
-            });
-          } else {
-            await sendEmail(
-              doctor.email,
-              "You Have New Appointment Scheduled",
-              `<p>You have a new appointment with ${patient.phoneNumber} on ${date} at ${time}.</p>`
-            );
-
-            await Mailer.sendEmail(
-              email,
-              "Appointment Booked Successfully",
-              `Your appointment with Dr. ${doctor.name} is confirmed for ${date} at ${time}.`
-            );
-
-            res.status(201).json({
-              title: "Appointment Booked Successfully",
-              message: "Appointment created successfully",
-            });
-          }
-        }
-      }
+    const patientId=req.patient.patientID
+    // Validate input
+    if (!doctorId || !patientId || !date || !time || !specialty) {
+      return res.status(400).json({ message: "All fields are required" });
     }
+
+    // Check if doctor exists
+    const doctor = await Doctor.findById(doctorId);
+    if (!doctor) {
+      return res.status(404).json({ 
+        title:"Doctor's Id Not Found"
+        message: "Invalid Doctor's credentials provided." });
+    }
+
+    // Create Twilio Video room and token
+    const roomName = `appointment_${doctorId}_${Date.now()}`;
+    const { telehealthLink } = await createTwilioRoomAndToken(roomName, patientName);
+
+    // Create and save appointment
+    const appointment = new Appointment({
+      doctor: doctorId,
+      patientId,
+      date,
+      time,
+      specialty,
+      status: "available",
+      telehealthLink,
+    });
+    
+    await appointment.save();
+    
+   // Notify the patient and doctor
+      await Mailer.sendEmail(
+        req.patient.email,
+        "Appointment Booked Successfully",
+        `Your appointment with Dr. ${doctor.name} is confirmed for ${date} at ${time}.`
+    )
+    
+    await sendSMS(
+    req.patient.phoneNumber,
+    `Your appointment with Dr. ${doctor.name} is confirmed for ${date} at ${time}.`
+    )
+    
+    //Notify Doctor
+    await Mailer.sendEmail(
+      doctor.email,
+      "You Have New Appointment Scheduled",
+      `<p>You have a new appointment with ${req.patient.phoneNumber} on ${date} at ${time}.</p>`
+    );
+    
+    res.status(201).json({ message: "Appointment created successfully", appointment });
   } catch (error) {
-    console.error("Error booking appointment:", error);
-    res.status(500).json({ message: "Error booking appointment", error });
-  }
+    //console.error("Error booking appointment:", error);
+    res.status(500).json({
+      title: "Server Error",
+      message: `Server Error: ${error.message}`,
+     })
 };
+
 
 // Waitlist management
-const addToWaitlist = async (req, res) => {
+exports.addToWaitlist = async (req, res) => {
   try {
-    const { appointmentId, patientId } = req.body;
-    const doctor = await Doctor.findOne({ docOnID: req.doctor.docOnID });
-    if (!doctor) {
-      res.status(404).json({
-        title: "Login Required",
-        message: "You are to login before accessing this",
-      });
-    } else {
-      const appointment = await Appointment.findById(appointmentId);
-      if (req.appointment.status !== "booked") {
-        res.status(400).json({ error: "Appointment is not booked" });
-      } else {
-        if (appointment.doctor !== doctor.docOnID) {
-          res.status(401).json({
-            error:
-              "Unauthorized access. Please make sure the appointment is booked with you",
-          });
-        } else {
-          appointment.status = appointment.waitlist || [];
-          appointment.waitlist.push(patientId);
-          const saveProcess = await appointment.save();
-          if (!saveProcess) {
-            res.status(400).json({
-              title: "Unable To Waitlist Appointment",
-              message:
-                "Sorry, but we are unable to waitlist this appointment at the moment, please try again later. Thank You",
-            });
-          } else {
-            res.status(200).json({
-              title: "Appointment Waitlisted",
-              message: "You have successfully waitlisted this appointment",
-            });
-          }
-        }
-      }
+    const id = req.params;
+    const doctorId=req.doctor.doctorID;
+    const appointment = await Appointment.findById(id);
+    
+    if (!appointment) {
+      return res.status(404).json({ title: "Appointment not found",
+message:"Appointment with the provided id not found"      });
     }
+    
+    if (req.appointment.status !== "available") {
+      return res.status(400).json({ title: "Appointment Not in Waitlist",
+          message:
+            "The appointment with provided id not found or unavailable" });
+    }
+    if (appointment.doctor!==doctorId) {
+      return res.status(401).json({title: "Unauthorized Access",
+          message:
+            "You are not authorised to waitlist this appointment. Please ensure the appointment was booked with you " });
+    }
+    appointment.status= "waiting";
+    appointment.waitlist.push(appointment.patientId);
+    await appointment.save();
+    
+    await sendSMS(
+    req.patient.phoneNumber,
+    `Your appointment with Dr. ${doctor.name} has been waitlisted. We’ll notify you once a slot opens. Thank you!`
+    )
+    await Mailer.sendEmail(
+        req.patient.email,
+        "Appointment Waitlisted",
+        `Your appointment with Dr. ${doctor.name} has been waitlisted. We’ll notify you once a slot opens. Thank you!.`
+    )
+    res.status(200).json({ Title:"Added to Waitlist",
+Message: "Appointment has been added to waitlist successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-const removeFromWaitlistAndReady = async (req, res) => {
+exports.removeFromWaitlistAndReady = async (req, res) => {
   try {
     const { appointmentId, patientId } = req.body;
-    const doctor = await Doctor.findOne({ docOnID: req.doctor.docOnID });
+    const doctorId=req.doctor.doctorID;
+    
+    // Find the appointment by ID
     const appointment = await Appointment.findById(appointmentId);
-    if (appointment.doctor !== doctor.docOnID) {
-      res.status(401).json({
-        error:
-          "Unauthorized access. Please make sure the appointment is booked with you",
-      });
-    } else {
-      if (!appointment) {
-        res.status(404).json({
-          title: "Appointment Not Found",
-          message: "The appoinment you are looking for does not exist",
-        });
-      } else {
-        if (
-          !appointment.waitlist ||
-          !appointment.waitlist.includes(patientId)
-        ) {
-          res.status(400).json({
-            title: "Not In Waitlist",
-            message: "Patient not in waitlist",
-          });
-        } else {
-          appointment.waitlist = appointment.waitlist.filter(
-            (id) => id.toString() !== patientId
-          );
-          appointment.status = "ready";
-          const removeFromWaitlist = await appointment.save();
-
-          if (!removeFromWaitlist) {
-            res.status(400).json({
-              title: "Failed",
-              message:
-                "We are unable remove this appoinment from your waitlist",
-            });
-          } else {
-            res.status(200).json({
-              title: "Remove From Waitlit",
-              message: "Appointment successfully removed from your waitlist",
-            });
-          }
-        }
-      }
+    // Check if the appointment exists
+    if (!appointment) {
+      return res.status(404).json({ title: "Appointment not found",
+message:"Appointment with the provided id not found"      });
+    } });
     }
+
+    if (appointment.doctor!==doctorId) {
+      return res.status(401).json({title: "Unauthorized Access",
+          message:
+            "You are not authorised to waitlist this appointment. Please ensure that the appointment was booked with you" })
+    }
+    
+    // Check if the patient is in the waitlist
+    if (!appointment.waitlist || !appointment.waitlist.includes(patientId)) {
+      return res.status(400).json({ title: "Patient not in waitlist",
+        message:"Appoitment/Patient was not in waitlist" });
+    }
+
+    // Remove the patient from the waitlist
+    appointment.waitlist = appointment.waitlist.filter(
+      (id) => id.toString() !== patientId
+    );
+
+    // Change the appointment status to "ready"
+    appointment.status = "ready";
+
+    // Save the updated appointment
+    await appointment.save();
+  
+  //Notify patient that the appointment session now ready
+await sendSMS(
+    req.patient.phoneNumber,
+    `Your appointment with Dr. ${doctor.name} is now confirmed and ready to start. Thank you!`    )
+  
+    await Mailer.sendEmail(
+        req.patient.email,
+        "Appointment Comfimed and Ready",
+        `Your appointment with Dr. ${doctor.name} is now confirmed and ready to start. Thank you`    )
+  
+    res.status(200).json({
+      Title:"Appointment Session Ready",
+      Message: "Appointment session is now ready to begin with patient"
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
+//make appoitnment ready
+
+
 
 // Display available slots
 //exports.getAvailableSlots = async (req, res) => {
 //  try {
-//   const { doctorId, date } = req.query;
-//   const slots = await Appointment.find({ doctor: doctorId, date, status: "available" });
-//  res.status(200).json(slots);
-// } catch (error) {
-//  res.status(500).json({ error: error.message });
-// }
+ //   const { doctorId, date } = req.query;
+ //   const slots = await Appointment.find({ doctor: doctorId, date, status: "available" });
+  //  res.status(200).json(slots);
+ // } catch (error) {
+  //  res.status(500).json({ error: error.message });
+ // }
 //};
-
-module.exports = {
-  removeFromWaitlistAndReady,
-  addToWaitlist,
-  bookAppointment,
-  searchAppointments,
-};
