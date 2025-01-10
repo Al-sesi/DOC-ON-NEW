@@ -1,6 +1,7 @@
+const { v4 } = require("uuid");
 const Appointment = require("../models/Appointment");
-const Doctor = require("../doctor/model/doctor.model.js");
-const Patient = require("../patient/model/patient.model.js");
+const doctorModel = require("../doctor/model/doctor.model");
+const Patient = require("../patient/model/patient.model");
 const Appointment = require("../models/Appointment");
 const patientAccessTokenValidator = require("../../../middleware/patient_access_token_validator");
 const { sendSMS, createTwilioRoomAndToken } = require("../utilts/appointment_utils");
@@ -15,9 +16,9 @@ exports.searchAppointments = async (req, res) => {
     if (time) filters.time = time;
     if (specialty) {
       const doctor = await Doctor.findOne({ specialty });
-      filters.doctor = doctor._id;
+      filters.doctor = doctor.docOnID;
     }
-    if (doctorId) filters.doctor = doctorId;
+    if (docOnID) filters.doctor = docOnID;
 
     const appointments = await Appointment.find(filters).populate("doctor");
     if(!appointments){
@@ -47,7 +48,7 @@ exports.bookAppointment = async (req, res) => {
     }
 
     // Check if doctor exists
-    const doctor = await Doctor.findById(doctorId);
+    const doctor = await Doctor.findOne(docOnID:doctorId);
     if (!doctor) {
       return res.status(404).json({ 
         title:"Doctor's Id Not Found"
@@ -60,6 +61,7 @@ exports.bookAppointment = async (req, res) => {
 
     // Create and save appointment
     const appointment = new Appointment({
+      appointmentID: v4(),
       doctor: doctorId,
       patientId,
       date,
@@ -98,40 +100,60 @@ exports.bookAppointment = async (req, res) => {
       message: `Server Error: ${error.message}`,
      })
 };
+  
+  //Get appoitment By ID
+exports.getAppointmentById = async (req, res) => {
+  try {
+    const {id} = req.params;
+    // Find appointment by ID using `findOne`
+    const appointment = await Appointment.findOne({ appointmentID : id });
 
-
+    if (!appointment) {
+      return res.status(404).json({ message: "Appointment not found" });
+    }
+    // Send the appointment as a response
+    res.status(200).json(appointment);
+  } catch (error) {
+    console.error("Error finding appointment:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+  
 // Waitlist management
 exports.addToWaitlist = async (req, res) => {
   try {
-    const id = req.params;
-    const doctorId=req.doctor.doctorID;
-    const appointment = await Appointment.findById(id);
-    
-    if (!appointment) {
+    const {id} = req.params;
+    const doctorId=req.doctor.docOnID;
+    const appointment = await Appointment.findOne(appointmentID: id);
+   if (!appointment) {
       return res.status(404).json({ title: "Appointment not found",
 message:"Appointment with the provided id not found"      });
     }
-    
-    if (req.appointment.status !== "available") {
-      return res.status(400).json({ title: "Appointment Not in Waitlist",
-          message:
-            "The appointment with provided id not found or unavailable" });
-    }
-    if (appointment.doctor!==doctorId) {
+    //Ensure only rightful owner of appointment can waitlist it
+   if (appointment.doctor!==doctorId) {
       return res.status(401).json({title: "Unauthorized Access",
           message:
             "You are not authorised to waitlist this appointment. Please ensure the appointment was booked with you " });
     }
+    
+    if (appointment.status !== "available") {
+      return res.status(400).json({ title: "Appointment Not in Waitlist",
+          message:
+            "The appointment with provided id not found or unavailable" });
+    }
+    
     appointment.status= "waiting";
     appointment.waitlist.push(appointment.patientId);
     await appointment.save();
     
+    
+   const patient = await Patient.findOne({ patientID: appointment.patientId });
     await sendSMS(
-    req.patient.phoneNumber,
+    patient.phoneNumber,
     `Your appointment with Dr. ${doctor.name} has been waitlisted. We’ll notify you once a slot opens. Thank you!`
     )
     await Mailer.sendEmail(
-        req.patient.email,
+         patient.email,
         "Appointment Waitlisted",
         `Your appointment with Dr. ${doctor.name} has been waitlisted. We’ll notify you once a slot opens. Thank you!.`
     )
@@ -144,12 +166,13 @@ Message: "Appointment has been added to waitlist successfully" });
 
 exports.removeFromWaitlistAndReady = async (req, res) => {
   try {
-    const { appointmentId, patientId } = req.body;
-    const doctorId=req.doctor.doctorID;
+     const {id} = req.params;
+     const doctorId=req.doctor.doctorID;
     
     // Find the appointment by ID
-    const appointment = await Appointment.findById(appointmentId);
-    // Check if the appointment exists
+    const appointment = await Appointment.findOne(appointmentID: id);
+    
+   // Check if the appointment exists
     if (!appointment) {
       return res.status(404).json({ title: "Appointment not found",
 message:"Appointment with the provided id not found"      });
@@ -169,26 +192,26 @@ message:"Appointment with the provided id not found"      });
     }
 
     // Remove the patient from the waitlist
-    appointment.waitlist = appointment.waitlist.filter(
-      (id) => id.toString() !== patientId
-    );
+    appointment.waitlist = [];
 
     // Change the appointment status to "ready"
     appointment.status = "ready";
 
     // Save the updated appointment
     await appointment.save();
+  const patient = await Patient.findOne({ patientID: appointment.patientId });
   
   //Notify patient that the appointment session now ready
 await sendSMS(
-    req.patient.phoneNumber,
-    `Your appointment with Dr. ${doctor.name} is now confirmed and ready to start. Thank you!`    )
+    patient.phoneNumber,
+    `Your appointment with Dr. ${doctor.name} is now confirmed and ready to start. Thank you!`    
+     )
   
     await Mailer.sendEmail(
-        req.patient.email,
+        patient.email,
         "Appointment Comfimed and Ready",
-        `Your appointment with Dr. ${doctor.name} is now confirmed and ready to start. Thank you`    )
-  
+        `Your appointment with Dr. ${doctor.name} is now confirmed and ready to start. Thank you`    
+         )
     res.status(200).json({
       Title:"Appointment Session Ready",
       Message: "Appointment session is now ready to begin with patient"
@@ -198,11 +221,9 @@ await sendSMS(
   }
 };
 
-//make appoitnment ready
 
-
-
-// Display available slots
+// Future Feature:
+//Display available slots
 //exports.getAvailableSlots = async (req, res) => {
 //  try {
  //   const { doctorId, date } = req.query;
