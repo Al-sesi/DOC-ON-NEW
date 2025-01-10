@@ -57,7 +57,7 @@ exports.bookAppointment = async (req, res) => {
 
     // Create Twilio Video room and token
     const roomName = `appointment_${doctorId}_${Date.now()}`;
-    const { telehealthLink } = await createTwilioRoomAndToken(roomName, patientName);
+    const { telehealthLink, accessToken } = await createTwilioRoomAndToken(roomName, patientName);
 
     // Create and save appointment
     const appointment = new Appointment({
@@ -69,6 +69,7 @@ exports.bookAppointment = async (req, res) => {
       specialty,
       status: "available",
       telehealthLink,
+      accessToken
     });
     
     await appointment.save();
