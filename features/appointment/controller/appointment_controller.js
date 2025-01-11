@@ -20,7 +20,7 @@ exports.searchAppointments = async (req, res) => {
     }
     if (docOnID) filters.doctor = docOnID;
 
-    const appointments = await Appointment.find(filters).populate("doctor");
+    const appointments = await Appointment.find(filters);
     if(!appointments){
      return res.status(400).json({
           title: "Appointment Not Found",
@@ -107,7 +107,9 @@ exports.getAppointmentById = async (req, res) => {
   try {
     const {id} = req.params;
     // Find appointment by ID using `findOne`
-    const appointment = await Appointment.findOne({ appointmentID : id });
+    const appointment = await Appointment.findOne({ appointmentID : id })
+      .populate("doctor")
+      .populate("patientId");
 
     if (!appointment) {
       return res.status(404).json({ message: "Appointment not found" });
