@@ -2,7 +2,8 @@ const express = require("express");
 const connectDB = require("./config/database_config");
 const doctorRouter = require("./features/doctor/routes/doctor.route");
 const patientRouter = require("./features/patient/routes/patient.route");
-const appointmentRouter = require("./features/appointment/routes/appointment.routes");
+const subscriptionRouter = require("./features/subscription/routes/subscription.routes");
+//const appointmentRouter = require("./features/appointment/routes/appointment.routes");
 
 require("dotenv").config();
 
@@ -12,7 +13,8 @@ app.use(express.json());
 //endpoints
 app.use("/api/v1/doc-on-backend/doctor", doctorRouter);
 app.use("/api/v1/doc-on-backend/patient", patientRouter);
-app.use("/api/v1/doc-on-backend/appointment", appointmentRouter);
+app.use("/api/v1/doc-on-backend/subscription_plans", subscriptionRouter);
+//app.use("/api/v1/doc-on-backend/appointment", appointmentRouter);
 
 const port = process.env.PORT || 5000;
 
