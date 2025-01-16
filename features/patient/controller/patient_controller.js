@@ -97,7 +97,7 @@ const patientLogin = async (req, res) => {
               phoneNumber: patient.phoneNumber,
             },
           },
-          process.env.DOC_ON_PATEINT_KEY,
+          process.env.DOC_ON_PATIENT_KEY,
           { expiresIn: "30d" }
         );
         res.status(200).json({
