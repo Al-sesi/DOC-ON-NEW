@@ -97,12 +97,12 @@ const patientLogin = async (req, res) => {
               phoneNumber: patient.phoneNumber,
             },
           },
-          process.env.DOC_ON_PATEINT_KEY,
+          process.env.DOC_ON_PATIENT_KEY,
           { expiresIn: "30d" }
         );
         res.status(200).json({
           title: "Login Successful",
-          patient: { accessToken, ...patient._doc },
+          token: accessToken,
         });
       }
     }
@@ -198,7 +198,7 @@ const updatePatientProfile = async (req, res) => {
           contactInformation: contactInformation || patient.contactInformation,
         },
         { new: true }
-      );
+      ).select("-password");
       if (!updatedPatient) {
         res.status(400).json({
           title: "Profile Update Failed",
@@ -226,7 +226,8 @@ const updatePatientProfile = async (req, res) => {
 
 const patientProfile = async (req, res) => {
   try {
-    const patient = await Patient.findOne({ patientID: req.patient.patientID });
+    const patient = await Patient.findOne({ patientID: req.patient.patientID })
+    .select("-password");
 
     if (!patient) {
       res.status(404).json({

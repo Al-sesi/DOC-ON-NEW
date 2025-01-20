@@ -7,12 +7,17 @@ const patientSchema = new mongoose.Schema(
     },
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
-    otherNames: { type: String, required: true },
-    email: { type: String, unique: true },
+    otherNames: { type: String},
+    email: { type: String, unique: true, required:true },
     phoneNumber: { type: String, required: true },
     dateOfBirth: { type: String, required: true },
     gender: { type: String, required: true },
-
+role: {
+    type: String,
+    enum: ['doctor', 'patient', 'admin'], // Allowed values
+    default: 'patient', // Default role
+    required: true,
+  },
     contactInformation: [
       {
         address: { type: String, required: true },

@@ -13,10 +13,15 @@ const doctorAccessTokenValidator = async (req, res, next) => {
             message: "You are not authorized for this action",
           });
         } else {
-          req.doctor = decoded.doctor;
+         req.doctor = decoded.doctor;
           next();
         }
       });
+    }else{
+      return res.status(401).json({
+            title: "Unauthorized",
+            message: "Unaithorize Access. Please login with your credentials",
+          });
     }
   } catch (e) {
     res.status(500).json({

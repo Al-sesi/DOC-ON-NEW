@@ -189,7 +189,7 @@ const updateDoctorProfile = async (req, res) => {
 
 const doctorProfile = async (req, res) => {
   try {
-    const doctor = await doctorModel.findOne({ docOnID: req.doctor.docOnID });
+    const doctor = await doctorModel.findOne({ docOnID: req.doctor.docOnID }).select("-password");
 
     if (!doctor) {
       res.status(404).json({

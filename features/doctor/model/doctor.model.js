@@ -18,6 +18,12 @@ const doctorSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+ role: {
+    type: String,
+    enum: ['doctor', 'patient', 'admin'], // Allowed values
+    default: 'doctor', // Default role
+    required: true,
+  },
     //for OTPs
     otpCode: { type: String },
     otpExpires: { type: Date },
