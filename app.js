@@ -6,8 +6,8 @@ const connectDB = require("./config/database_config");
 const doctorRouter = require("./features/doctor/routes/doctor.route");
 const patientRouter = require("./features/patient/routes/patient.route");
 const appointmentRouter = require("./features/appointment/routes/appointment.route");
-const threadRouter = require('./features/messaging/routes/thread.route');
-const messagingRouter = require('./features/messaging/routes/messaging.route');
+const threadRouter = require("./features/messaging/routes/thread.route");
+const messagingRouter = require("./features/messaging/routes/messaging.route");
 const subscriptionRouter = require("./features/plans/subscription/routes/subscription.route");
 const paymentRouter = require("./features/plans/payments/routes/payment.route");
 const transactionRouter = require("./features/plans/transaction/routes/transaction.route");
@@ -24,8 +24,8 @@ app.use("/api/v1/doc-on-backend/doctor", doctorRouter);
 app.use("/api/v1/doc-on-backend/patient", patientRouter);
 app.use("/api/v1/doc-on-backend/subscription_plans", subscriptionRouter);
 app.use("/api/v1/doc-on-backend/appointment", appointmentRouter);
-app.use('/api/v1/doc-on-backend/threads', threadRouter);
-app.use('/api/v1/doc-on-backend/messages', messagingRouter);
+app.use("/api/v1/doc-on-backend/threads", threadRouter);
+app.use("/api/v1/doc-on-backend/messages", messagingRouter);
 const port = process.env.PORT || 3000;
 
 connectDB()

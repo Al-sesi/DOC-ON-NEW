@@ -2,7 +2,10 @@ const { v4 } = require("uuid");
 const Appointment = require("../model/appointment_model");
 const Doctor = require("../../doctor/model/doctor.model");
 const Patient = require("../../patient/model/patient.model");
-const { sendSMS, createTwilioRoomAndToken } = require("../utils/appointment_utils");
+const {
+  sendSMS,
+  createTwilioRoomAndToken,
+} = require("../utils/appointment_utils");
 const Mailer = require("../../../config/mailer_config");
 
 // Search and filter appointments
@@ -24,7 +27,8 @@ exports.searchAppointments = async (req, res) => {
     if (!appointments.length) {
       return res.status(400).json({
         title: "Appointment Not Found",
-        message: "No appointments match the provided filters. Please try again.",
+        message:
+          "No appointments match the provided filters. Please try again.",
       });
     }
 
@@ -42,14 +46,17 @@ exports.bookAppointment = async (req, res) => {
   try {
     //Allow only patients
     const patientId = req.patient.patientID;
-     if(!patientId)return res.status(400).json({ message: "Please login as patient to book apppointment" });
-    
+    if (!patientId)
+      return res
+        .status(400)
+        .json({ message: "Please login as patient to book apppointment" });
+
     //Collect and validate the required data
     const { doctorId, date, time, specialty } = req.body;
     if (!doctorId || !date || !time || !specialty) {
       return res.status(400).json({ message: "All fields are required" });
     }
-     //Check the doctor
+    //Check the doctor
     const doctor = await Doctor.findOne({ docOnID: doctorId });
     if (!doctor) {
       return res.status(404).json({
@@ -59,7 +66,10 @@ exports.bookAppointment = async (req, res) => {
     }
 
     const roomName = `appointment_${doctorId}_${Date.now()}`;
-    const { telehealthLink, accessToken } = await createTwilioRoomAndToken(roomName, req.patient.name);
+    const { telehealthLink, accessToken } = await createTwilioRoomAndToken(
+      roomName,
+      req.patient.name
+    );
 
     const appointment = new Appointment({
       appointmentID: v4(),
@@ -92,7 +102,9 @@ exports.bookAppointment = async (req, res) => {
       `You have a new appointment with ${req.patient.phoneNumber} on ${date} at ${time}.`
     );
 
-    res.status(201).json({ message: "Appointment created successfully", appointment });
+    res
+      .status(201)
+      .json({ message: "Appointment created successfully", appointment });
   } catch (error) {
     res.status(500).json({
       title: "Server Error",
