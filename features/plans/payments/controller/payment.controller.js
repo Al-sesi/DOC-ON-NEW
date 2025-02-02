@@ -1,37 +1,39 @@
 const { v4 } = require("uuid");
-const Transactions = require("../model/payment.model");
-const { Subscription } = require("../../subscription/model/subscription_model");
-const createTransaction = require("../services/monnifyService");
-const { sendEmail } = require("../../../../config/mailer_config");
+const {Transaction}= require("../model/payment.model");
+const {BookingSlot}= require("../model/booking.model");
+const {Subscription}=require("../../subscription/model/subscription_model");
+const createTransaction = require('../services/monnifyService');
+const {sendEmail}=require("../../../../config/mailer_config")
+const Doctor=require("../../../doctor/model/doctor.model")
+const Patient=require("../../../patient/model/patient.model")
+
 const initializeDoctorPayment = async (req, res) => {
   try {
-    const { planID } = req.body;
-    if (!planID)
-      return res.status(404).json("Subscription ID must be provided");
-    const plan = await Subscription.findOne({ subscriptionID: planID });
-    if (!plan) return res.status(404).json("Subscription Not Found");
-
-    const email = req.doctor.email;
-    const subscriberDetails = req.doctor.docOnID;
-
-    //Make sure right user purchase right plan
-    if (plan.category !== "Doctor" || !subscriberDetails || !email) {
-      return res.status(404).json("This Subscription type is for Doctors only");
-    }
-
+    const {planID} = req.body;
+    if (!planID) return res.status(404).json("Subscription ID must be provided");
+   const plan= await Subscription.findOne({subscriptionID:planID})
+   if (!plan) return res.status(404).json("Subscription Not Found");
+    
+    const email=req.doctor.email;
+    const subscriberDetails= req.doctor.docOnID;
+    
+  //Make sure right user purchase right plan
+  if (plan.category!=="Doctor" || !subscriberDetails || !email){
+    return res.status(404).json("This Subscription type is for Doctors only");
+  }
     //Initialize payment
     const transactionDetails = {
-      amount: plan.price,
-      customerEmail: email,
+      amount:plan.price,
+      customerEmail:email,
       subscriberDetails,
-      planDetails: planID,
-      paymentReference: v4(),
+      planDetails:planID,
+      reference:v4(),
       paymentDescription: `Payment for ${plan.name} subscription`,
-      currencyCode: "NGN",
-    };
+      currencyCode: 'NGN',
+  };
     const transaction = await createTransaction(transactionDetails);
 
-    res.status(200).json({ email, price });
+    res.status(200).json({email, price});
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -39,72 +41,92 @@ const initializeDoctorPayment = async (req, res) => {
 
 const initializePatientPayment = async (req, res) => {
   try {
-    const { planID } = req.body;
-
-    if (!planID)
-      return res.status(404).json("Subscription ID must be provided");
-    const plan = await Subscription.findOne({ subscriptionID: planID });
-    if (!plan) return res.status(404).json("Subscription Not Found");
-
-    const email = req.patient.email;
-    const subscriberDetails = req.patient.docOnID;
-
-    //Make sure right user purchase right plan
-    if (plan.category === "Doctor" || !email || !subscriberDetails) {
-      return res.status(404).json("This Subscription type is for Doctors only");
-    }
+    const {planID} = req.body;
+    if (!planID) return res.status(404).json("Subscription ID must be provided");
+  
+    const plan= await Subscription.findOne({subscriptionID:planID})
+  if (!plan) return res.status(404).json("Subscription Not Found");
+    
+    const email=req.patient.email;
+    const subscriberDetails= req.patient.patientID;
+   
+  //Make sure right user purchase right plan
+  if (plan.category==="Doctor" || !email || !subscriberDetails){
+  return res.status(404).json("This Subscription type is for Doctors only");
+  }
     //Initialize payment
     const transactionDetails = {
-      amount: plan.price,
-      customerEmail: email,
+      amount:plan.price,
+      customerEmail:email,
       subscriberDetails,
-      planDetails: planID,
-      paymentReference: v4(),
+      planDetails:planID,
+      reference:v4(),
       paymentDescription: `Payment for ${plan.name} subscription`,
-      currencyCode: "NGN",
-    };
+      currencyCode: 'NGN',
+  };
     const transaction = await createTransaction(transactionDetails);
-    res.status(200).json({ email, price });
+    res.status(200).json({email, price});
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
+
 const verifyPayment = async (req, res) => {
   const { eventType, eventData } = req.body;
   try {
-    // Handle successful transaction
-    const plan = await Subscription.findOne({
-      subscriptionID: metadata.planDetails,
+    const { subscriberDetails, planDetails, price, reference, email}= eventData.metadata;
+      const plan= await Subscription.findOne({subscriptionID:planDetails})
+       if (!plan) return res.status(404).json("Subscription Not Found");
+   
+    if (eventType === 'TRANSACTION_COMPLETED') {
+      const transaction = new Transaction({
+        transactionID:v4(),
+        reference,
+        subscriberDetails, 
+        planDetails, 
+        price,
+        duration:plan.duration,
+        planDetails:plan._id, //For populate methods
     });
-    if (!plan) return res.status(404).json("Subscription Not Found");
-
-    if (eventType === "TRANSACTION_COMPLETED") {
-      const metadata = eventData.metadata;
-
-      const transaction = new Transactions({
-        transactionID: v4(),
-        ...metadata,
-        planDetails: plan._id, //For populate methods
-      });
-      await transaction.save();
-      const para =
-        plan.category !== "Doctor"
-          ? `book appointments with healthcare professionals.`
-          : `recieve appointments from Patients.`;
-      const month = plan.duration > 1 ? "s" : "";
-
-      //Get plan expiration date
-      const duration = plan.duration * 30;
-      const date = new Date();
-
-      const today = date.toISOString().split("T")[0];
-
-      const expiration = new Date(date);
-      expiration.setDate(date.getDate() + duration);
-      const expirationDate = expiration.toISOString().split("T")[0];
-
-      const successMessage = `<html>
+      const newTransaction= await transaction.save();
+    
+      if(plan.category!=="Doctor"){
+        transaction.category="patient";
+        transaction.save();
+        //Create booking for booking appointment
+       const newBook = new BookingSlot({
+        video:plan.videoConferencing, 
+        chats:plan.messaging, 
+        booking:plan.appointmentsBooking,
+        owner:subscriberDetails,
+        expirationDate:transaction.expirationDate
+  });
+      const savedBook= await newBook.save();
+        const updatePatientSubscription = await Patient.findOneAndUpdate(
+          {
+            patientID:subscriberDetails,
+          },
+          { hasSubscription: true }
+        );
+        if(!updatePatientSubscription)console.log("Unable to Patient sub turned on")
+    
+      }else{
+        transaction.category="doctor";
+        transaction.save();
+        const updateDoctorSubscription = await Doctor.findOneAndUpdate(
+          {
+            docOnID:subscriberDetails,
+          },
+          { hasSubscription: true }
+        );
+        if(updateDoctorSubscription)console.log("Doctor sub turned on")
+      }
+      
+      //Email subscriber
+      const para=plan.category!== "Doctor" ?`book appointments with healthcare professionals.`:`recieve appointments from Patients.`;
+      const month = plan.duration > 1 ? 's' : '';
+      const successMessage=`<html>
       <head>
         <style>
           body { font-family: Arial, sans-serif; color: #333; }
@@ -129,11 +151,11 @@ const verifyPayment = async (req, res) => {
           </tr>
           <tr>
             <th>Start Date</th>
-            <td>${today}</td>
+            <td>${transaction.subscriptionDate.toISOString().split('T')[0]}</td>
           </tr>
           <tr>
             <th>Expiration Date</th>
-            <td>${expirationDate}</td>
+            <td>${transaction.expirationDate.toISOString().split('T')[0]}</td>
           </tr>
         </table>
         <p>If you have any questions, feel free to contact our support team at <a href="mailto:alsesitechnologies@gmail.com">doconteam</a>.</p>
@@ -141,10 +163,14 @@ const verifyPayment = async (req, res) => {
       </body>
     </html>
   `;
-      sendEmail(metadata.email, `Subscription Successful`, successMessage);
-      res.status(200).json(transaction);
-    } else if (eventType === "TRANSACTION_FAILED") {
-      const failedMessage = `
+      sendEmail(
+      email,
+      `Subscription Successful`,
+      successMessage  
+    )
+      res.status(200).json({newTransaction});
+  } else if (eventType === 'TRANSACTION_FAILED') {
+    const failedMessage=`
     <html>
       <head>
         <style>
@@ -171,7 +197,7 @@ const verifyPayment = async (req, res) => {
           </tr>
           <tr>
             <th>Date of Attempt</th>
-            <td>${new Date(Date.now()).toISOString().split("T")[0]}</td>
+            <td>${new Date(Date.now()).toISOString().split('T')[0]}</td>
           </tr>
         </table>
         <p>Possible reasons for failure include:</p>
@@ -186,15 +212,18 @@ const verifyPayment = async (req, res) => {
       </body>
     </html>
   `;
-      sendEmail(metadata.email, `Subscription Failed`, failedMessage);
-      console.log("Transaction failed:", eventData);
-    }
+    sendEmail(
+      email,
+      `Subscription Failed`,
+      failedMessage  
+    )
+  //email admin
+    console.log('Transaction failed:', eventData);
+  }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
-
-//const { amount, customerEmail, paymentReference } = req.body;
 
 module.exports = {
   initializePatientPayment,

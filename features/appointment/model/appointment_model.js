@@ -2,23 +2,26 @@ const mongoose = require("mongoose");
 
 const appointmentSchema = new mongoose.Schema({
   appointmentID: {
-    type: String,
-  },
-  date: { type: String, required: true },
-  time: { type: String, required: true },
-  doctorId: {
-    type: String,
-    ref: "Doctor",
+      type: String,
+    },
+  date: {type:String, required:true},
+  time: {type:String, required:true},
+  doctorDetails: {
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: "doctors", 
     required: true,
   },
-  patientId: {
-    type: String,
-    ref: "Patient",
+  patientDetails: {
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: "patients",  
     required: true,
   },
-  speciality: { type: String, required: true },
+  specialty:{type:String, required:true},
   status: { type: String, default: "available" },
-  telehealthLink: { type: String, required: true },
+  telehealthLink:{type: String},
+  telehealthAccess:String  
 });
 
 module.exports = mongoose.model("Appointment", appointmentSchema);
+
+

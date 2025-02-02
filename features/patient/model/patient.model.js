@@ -14,9 +14,9 @@ const patientSchema = new mongoose.Schema(
     gender: { type: String, required: true },
 role: {
     type: String,
-    enum: ['doctor', 'patient', 'admin'], // Allowed values
     default: 'patient', // Default role
     required: true,
+    immutable:true,
   },
     contactInformation: [
       {
@@ -24,7 +24,11 @@ role: {
         preferredLanguage: { type: String, required: true },
       },
     ],
-
+    
+hasSubscription:{
+  type:Boolean,
+  default:false
+},
     password: { type: String, required: true },
     isEmailVerified: {
       type: Boolean,

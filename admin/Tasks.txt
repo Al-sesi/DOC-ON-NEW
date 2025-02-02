@@ -1,0 +1,12 @@
+TASKS
+Error management system
+Transaction
+
+
+DETAILED PLANS
+
+
+MAPPED OUT/UNCERTAINS
+appointment
+update
+delete

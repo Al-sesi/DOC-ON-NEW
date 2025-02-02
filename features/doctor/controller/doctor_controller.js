@@ -1,5 +1,5 @@
-let doctorModel = require("../model/doctor.model");
-let jwt = require("jsonwebtoken");
+const doctorModel = require("../model/doctor.model");
+const jwt = require("jsonwebtoken");
 const { v4 } = require("uuid");
 const bcrypt = require("bcryptjs");
 const Mailer = require("../../../config/mailer_config");
@@ -90,6 +90,7 @@ const signInDoctor = async (req, res) => {
               firstName: doctor.firstName,
               lastName: doctor.lastName,
               email: doctor.email,
+              role:doctor.role,
             },
           },
           process.env.DOC_ON_DOCTOR_KEY,
@@ -173,7 +174,6 @@ const updateDoctorProfile = async (req, res) => {
     // Respond with success and updated profile
     res.status(200).json({
       title: "DOC-ON Doctor Update Profile",
-      status: 200,
       successful: true,
       message: "You have successfully updated your profile.",
       updatedDoctor,
@@ -189,7 +189,32 @@ const updateDoctorProfile = async (req, res) => {
 
 const doctorProfile = async (req, res) => {
   try {
-    const doctor = await doctorModel.findOne({ docOnID: req.doctor.docOnID }).select("-password");
+    const id=req.params.doctorID
+    const doctor = await doctorModel.findOne({ docOnID: id }).select("-password");
+
+    if (!doctor) {
+      res.status(404).json({
+        title: "Doctor Not Found",
+        message: "The doctor profile you are looking for deos not exist",
+      });
+    } else {
+      res.status(200).json({
+        title: "Success",
+        profileData: doctor,
+      });
+    }
+  } catch (e) {
+    res.status(500).json({
+      title: "Server Error",
+      message: `Server Error: ${e}`,
+    });
+  }
+};
+
+const myProfile = async (req, res) => {
+  try {
+    const id=req.doctor.docOnID
+    const doctor = await doctorModel.findOne({ docOnID: id }).select("-password");
 
     if (!doctor) {
       res.status(404).json({
@@ -427,14 +452,84 @@ const verifyEmailAddressWithOTP = async (req, res) => {
   }
 };
 
+
+//ADMIN CONTROLLERS
+// Get all Doctors
+const getAllDoctors = async (req, res) => {
+  try {
+    let queryData = { ...req.query };
+
+    const doctors = await doctorModel.find(queryData);
+
+    if (!doctors || doctors.length === 0) {
+      return res.status(404).json({ message: "No Doctors Found" });
+    }
+    res.json(doctors);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Delete Doctor
+const deleteDoctor = async (req, res) => {
+  try {
+    const { doctorID } = req.params;
+    if (!doctorID) {
+      return res.status(400).json({ message: "Invalid Or No ID Provided" });
+    }
+    const doctor = await doctorModel.findOneAndDelete({
+      docOnID: doctorID,
+    });
+    if (doctor) {
+      return res
+        .status(200)
+        .json({ success: true, message: "Doctor Deleted" });
+    } else {
+      return res
+        .status(404)
+        .json({ success: false, message: "Doctor Not Found!" });
+    }
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ success: false, message: "Unable to delete" });
+  }
+};
+
+//Doctor Statistics
+const getStatistics = async (req, res) => {
+  try {
+    const allDoctors = await doctorModel.countDocuments();
+    const subscribedDoctors = await doctorModel.countDocuments({ hasSubscription: true });
+    const nonSubscribedDoctors=Number(allDoctors)-Number(subscribedDoctors)
+    
+    //console.log(allDoctors, subscribedDoctors, nonSubscribedDoctors )
+    if (typeof allDoctors !== "number" || typeof subscribedDoctors !=="number") {
+      return res.status(404).json({ message: "Unable to fetch Doctor statistics." });
+    }
+    res.status(200).json({allDoctors, subscribedDoctors, nonSubscribedDoctors});
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+
 module.exports = {
   registerDoctor,
   signInDoctor,
   updateDoctorProfile,
   doctorProfile,
+  myProfile,
   updatePassword,
   forgotPassword,
   verifyResetPasswordOTPAndResetPassword,
   verifyAccountEmail,
   verifyEmailAddressWithOTP,
+  
+  //Admin
+    //admin controllers
+  getAllDoctors,
+  deleteDoctor,
+  getStatistics
 };
