@@ -1,9 +1,11 @@
-const twilio = require("twilio");
+require('dotenv').config();
+const twilio=require("twilio")
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
-const apiKey = process.env.TWILIO_API_KEY;
-const apiSecret = process.env.TWILIO_API_SECRET;
+const apiKeySid = process.env.TWILIO_API_KEY;
+const apiKeySecret = process.env.TWILIO_API_SECRET;
+
 const client = twilio(accountSid, authToken);
 
 //sms notification service
@@ -11,31 +13,31 @@ exports.sendSMS = async (to, message) => {
   try {
     await client.messages.create({
       body: message,
-      from: messagingServiceSid, // Use Twilio's messaging service SID
+      from: +17068082198, // Use Twilio's messaging service SID
       to,
     });
-   // console.log(`SMS sent to ${to}`);
+    console.log(`SMS sent to ${to}`);
   } catch (error) {
     console.error("Error sending SMS:", error.message);
     throw new Error("Failed to send SMS");
   }
 };
 
-//video 
+//video conferencing
 exports.createTwilioRoomAndToken = async (roomName, participantName) => {
-  try {
-    // Create a video room
-    await client.video.rooms.create({
+  // Create a video room
+    await client.video.v1.rooms.create({
       uniqueName: roomName,
       type: "group", // Use "group-small" for smaller rooms
     });
-
     // Generate an access token for the participant
     const AccessToken = twilio.jwt.AccessToken;
     const VideoGrant = AccessToken.VideoGrant;
 
-    const token = new AccessToken(accountSid, apiKey, apiSecret);
-    token.identity = participantName; // Assign participant identity
+    const token = new AccessToken(accountSid, apiKeySid, apiKeySecret, {
+  identity: 'user_identity', // Ensure identity is specified
+         });
+  
     token.addGrant(new VideoGrant({ room: roomName }));
 
     // Return the room link and access token
@@ -43,11 +45,7 @@ exports.createTwilioRoomAndToken = async (roomName, participantName) => {
       telehealthLink: `https://video.twilio.com/${roomName}`,
       accessToken: token.toJwt(),
     };
-  } catch (error) {
-    console.error("Error creating Twilio room or token:", error);
-    throw new Error("Failed to create Twilio video room");
-  }
-};
+}
  
 /*
   ENV VARIABLES

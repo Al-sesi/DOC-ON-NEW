@@ -40,7 +40,10 @@ const doctorSchema = new mongoose.Schema(
         boardCertification: { type: String, required: true },
       },
     ],
-
+hasSubscription:{
+  type:Boolean,
+  default:false
+},
     password: { type: String, required: true },
     verification: [
       {

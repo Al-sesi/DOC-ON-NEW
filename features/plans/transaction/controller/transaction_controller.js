@@ -1,14 +1,14 @@
-const Transactions = require("../../payments/model/payment.model");
+const {Transaction} = require("../../payments/model/payment.model");
 const Patient = require('../../../patient/model/patient.model'); // Adjust path
 const Doctor = require('../../../doctor/model/doctor.model'); // Adjust path
 
 const getAllTransactions = async (req, res) => {
   try {
     let queryData = { ...req.query };
-
     // Fetch transactions
-    const transactions = await Transactions.find(queryData)
-    .populate({path:"planDetails", select:"-_id subscriptionID name price"});
+    const transactions = await Transaction.find(queryData)
+    .populate({path:"planDetails", select:"-_id subscriptionID name price"})
+    .select("-checked");
     if (!transactions || transactions.length === 0) {
       return res.status(404).json({ message: "No Transactions Found" });
     }
@@ -37,6 +37,40 @@ const getAllTransactions = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+//Get Transacrion history for user
+const myTransactions = async (req, res) => {
+  try {
+    // Fetch transactions
+    const transactions = await Transaction.find({subscriberDetails:req.params.userID})
+    .populate({path:"planDetails", select:"-_id subscriptionID name price"})
+    .select("-checked");
+    if (!transactions || transactions.length === 0) {
+      return res.status(404).json({ message: "No Transactions Found" });
+    }
+  // Populate subscriberID details
+    const populatedTransactions = await Promise.all(
+      transactions.map(async (transaction) => {
+        const transactionObj = transaction.toObject()
+       const subscriberID= transactionObj.subscriberDetails;
+     // Check in both collections
+        const patient = await Patient.findOne({ patientID:subscriberID })
+        .select("-_id patientID email role phoneNumber firstName LastName");
+        
+        const doctor = patient ? null : await Doctor.findOne({docOnID: subscriberID })
+        .select("-_id docOnID email role phoneNumber firstName LastName");
+
+        // Attach the subscriber details to the transaction
+        return {
+          ...transaction.toObject(),
+          subscriber: patient || doctor || null, // Populate with the found details
+        };
+      })
+    );
+    res.status(200).json(populatedTransactions);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 
 // Get Transaction by ID
 const getTransactionById = async (req, res) => {
@@ -46,9 +80,10 @@ const getTransactionById = async (req, res) => {
     if (!id) {
       return res.status(400).json({ message: "Invalid Or No ID Provided" });
     }
-    let transaction = await Transactions.findOne({ transactionID: id })
+    let transaction = await Transaction.findOne({ transactionID: id })
     .populate(
-    {path:"planDetails", select:"-_id subscriptionID name category price"});
+    {path:"planDetails", select:"-_id subscriptionID name category price"})
+     .select("-checked");;
    
     if (!transaction) {
       return res
@@ -73,7 +108,7 @@ const subscriber=transactionObj.subscriberDetails;
       ...transaction.toObject(),
       subscriberDetails: patient || doctor || null, // Populate with the found details
     };
-    res.status(200).send(transaction);
+    res.status(200).json(transaction);
   } catch (error) {
     res.status(500).json({ message: "Something Went Wrong" });
   }
@@ -88,7 +123,7 @@ const updateTransaction = async (req, res) => {
       return res.status(400).json({ message: "Invalid Or No ID Provided" });
     }
 
-    const transaction = await Transactions.findOneAndUpdate(
+    const transaction = await Transaction.findOneAndUpdate(
       { transactionID: id },
     {status:"confirmed"},
       { new: true }
@@ -104,38 +139,26 @@ const updateTransaction = async (req, res) => {
   }
 };
 
-// Delete Transaction
-const deleteTransaction = async (req, res) => {
+
+//Transaction Statistics
+const getStatistics = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    if (!id) {
-      return res.status(400).json({ message: "Invalid Or No ID Provided" });
+    const allTransactions = await Transaction.countDocuments();
+    const newTransactions = await Transaction.countDocuments({ status: "new" });
+    const confirmedTransactions=Number(allTransactions)-Number(newTransactions)
+    if (typeof allTransactions !== "number" || typeof newTransactions !=="number") {
+      return res.status(404).json({ message: "Unable to fetch Patient statistics." });
     }
-
-    const transaction = await Transactions.findOneAndDelete({
-      transactionID: id,
-    });
-
-    if (transaction) {
-      return res
-        .status(200)
-        .json({ success: true, message: "Transaction Deleted" });
-    } else {
-      return res
-        .status(404)
-        .json({ success: false, message: "Transaction Not Found!" });
-    }
-  } catch (error) {
-    return res
-      .status(500)
-      .json({ success: false, message: "Unable to delete" });
+    res.status(200).json({allTransactions, newTransactions, confirmedTransactions});
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
 module.exports = {
+  myTransactions,
   getAllTransactions,
   getTransactionById,
   updateTransaction,
-  deleteTransaction,
+  getStatistics,
 };

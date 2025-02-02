@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const adminAccessTokenValidator = require("../../../../middleware/admin_access_token_validator");
 
 const {
   getAllSubscriptions,
@@ -11,9 +12,9 @@ const {
 
 // Define routes
 router.get("/", getAllSubscriptions);
-router.post("/", createSubscription);
+router.post("/", adminAccessTokenValidator, createSubscription);
 router.get("/:id", getSubscriptionById);
-router.put("/:id", updateSubscription);
-router.delete("/:id", deleteSubscription);
+router.put("/:id", adminAccessTokenValidator, updateSubscription);
+router.delete("/:id", adminAccessTokenValidator, deleteSubscription);
 
 module.exports = router;

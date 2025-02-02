@@ -1,19 +1,19 @@
 const jwt = require("jsonwebtoken");
 
-const patientAccessTokenValidator = async (req, res, next) => {
+const adminAccessTokenValidator = async (req, res, next) => {
   try {
     let token;
     let authHeader = req.headers.Authorization || req.headers.authorization;
     if (authHeader && authHeader.startsWith("Bearer")) {
       token = authHeader.split(" ")[1];
-      jwt.verify(token, process.env.DOC_ON_PATIENT_KEY, (err, decoded) => {
+      jwt.verify(token, process.env.DOC_ON_ADMIN_KEY, (err, decoded) => {
         if (err) {
           res.status(401).json({
             title: "Unauthorized",
             message: "You are not authorized for this action",
           });
         } else {
-         req.patient = decoded.patient;
+         req.admin = decoded.admin;
           next();
         }
       });
@@ -31,4 +31,4 @@ const patientAccessTokenValidator = async (req, res, next) => {
   }
 };
 
-module.exports = patientAccessTokenValidator;
+module.exports = adminAccessTokenValidator;

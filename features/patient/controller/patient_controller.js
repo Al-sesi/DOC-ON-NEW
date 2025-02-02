@@ -47,10 +47,25 @@ const registerPatient = async (req, res) => {
         });
         const savePatient = await newPatient.save();
         if (savePatient) {
+          const accessToken = jwt.sign(
+          {
+            patient: {
+              patientID: patient.patientID,
+              firstName: patient.firstName,
+              lastName: patient.lastName,
+              email: patient.email,
+              phoneNumber: patient.phoneNumber,
+              role:patient.role,
+            },
+          },
+          process.env.DOC_ON_PATIENT_KEY,
+          { expiresIn: "30d" }
+        );
+          
           res.status(201).json({
             title: "Patient Registered Successfully",
-            message: "You have successfully registered to our services",
-          });
+            token:accessToken
+               });
         } else {
           res.status(400).json({
             title: "Patient Registration Failed",
@@ -94,6 +109,7 @@ const patientLogin = async (req, res) => {
               firstName: patient.firstName,
               lastName: patient.lastName,
               email: patient.email,
+              hasSubscription:patient.hasSubscription,
               phoneNumber: patient.phoneNumber,
             },
           },
@@ -208,7 +224,6 @@ const updatePatientProfile = async (req, res) => {
       } else {
         res.status(200).json({
           title: "DOC-ON Patient Update Profile",
-          status: 200,
           successful: true,
           message: "You have successfully updated your profile.",
           updatedPatient,
@@ -224,9 +239,33 @@ const updatePatientProfile = async (req, res) => {
   }
 };
 
-const patientProfile = async (req, res) => {
+const myProfile = async (req, res) => {
   try {
     const patient = await Patient.findOne({ patientID: req.patient.patientID })
+    .select("-password");
+
+    if (!patient) {
+      res.status(404).json({
+        title: "Patient Not Found",
+        message: "The patient profile you are looking for deos not exist",
+      });
+    } else {
+      res.status(200).json({
+        title: "Success",
+        profileData: patient,
+      });
+    }
+  } catch (e) {
+    res.status(500).json({
+      title: "Server Error",
+      message: `Server Error: ${e}`,
+    });
+  }
+};
+
+const patientProfile = async (req, res) => {
+  try {
+    const patient = await Patient.findOne({ patientID: req.params.patientID })
     .select("-password");
 
     if (!patient) {
@@ -418,14 +457,84 @@ const verifyEmailAddressWithOTP = async (req, res) => {
   }
 };
 
+
+//ADMIN CONTROLLERS
+// Get all Patients
+const getAllPatients = async (req, res) => {
+  try {
+    let queryData = { ...req.query };
+
+    const patients = await Patient.find(queryData);
+
+    if (!patients || patients.length === 0) {
+      return res.status(404).json({ message: "No Patients Found" });
+    }
+    res.json(patients);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Delete Patient
+const deletePatient = async (req, res) => {
+  try {
+    const { patientID } = req.params;
+    if (!patientID) {
+      return res.status(400).json({ message: "Invalid Or No ID Provided" });
+    }
+    const patient = await Patient.findOneAndDelete({
+      patientID: patientID,
+    });
+    if (patient) {
+      return res
+        .status(200)
+        .json({ success: true, message: "Patient Deleted" });
+    } else {
+      return res
+        .status(404)
+        .json({ success: false, message: "Patient Not Found!" });
+    }
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ success: false, message: "Unable to delete" });
+  }
+};
+
+//Patient Statistics
+const getStatistics = async (req, res) => {
+  try {
+    const allPatients = await Patient.countDocuments();
+    const subscribedPatients = await Patient.countDocuments({ hasSubscription: true });
+    const nonSubscribedPatients=Number(allPatients)-Number(subscribedPatients)
+    
+    //console.log(allPatients, subscribedPatients, nonSubscribedPatients )
+    if (typeof allPatients !== "number" || typeof subscribedPatients !=="number") {
+      return res.status(404).json({ message: "Unable to fetch Patient statistics." });
+    }
+    res.status(200).json({allPatients, subscribedPatients, nonSubscribedPatients});
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+
+
 module.exports = {
   registerPatient,
   patientLogin,
   updatePassword,
+  myProfile,
   patientProfile,
   updatePatientProfile,
   forgotPassword,
   verifyResetPasswordOTPAndResetPassword,
   verifyAccountEmail,
   verifyEmailAddressWithOTP,
+  
+  //admin controllers
+  getAllPatients,
+  deletePatient,
+  getStatistics
 };

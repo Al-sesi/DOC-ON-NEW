@@ -33,7 +33,8 @@ const {subscriberDetails, planDetails, amount, paymentReference, }=transactionDe
       subscriberDetails,
       planDetails,
       price:amount,
-      reference:paymentReference
+      reference:paymentReference,
+      email:customerEmail,
     }
     const response = await axios.post(
       `${MONNIFY_BASE_URL}/merchant/transactions/init-transaction`,

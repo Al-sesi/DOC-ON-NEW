@@ -45,7 +45,6 @@ const createSubscription = async (req, res) => {
             );
             return res.status(400).json({ message: customMessage[0] });
         }
-    
     res.status(500).send({
       title: "Server Error",
       message: err.message,

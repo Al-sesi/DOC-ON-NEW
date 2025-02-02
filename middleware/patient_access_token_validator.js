@@ -8,14 +8,14 @@ const patientAccessTokenValidator = async (req, res, next) => {
       token = authHeader.split(" ")[1];
       jwt.verify(token, process.env.DOC_ON_PATIENT_KEY, (err, decoded) => {
         if (err) {
-          res.status(401).json({
+         return res.status(401).json({
             title: "Unauthorized",
             message: "You are not authorized for this action",
           });
-        } else {
+        } 
          req.patient = decoded.patient;
           next();
-        }
+        
       });
     }else{
       return res.status(401).json({
