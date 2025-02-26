@@ -28,16 +28,16 @@ app.use(express.json());
 app.use("/uploads", express.static("uploads")); // Static files
 
 // Endpoints
-app.use("/api/v1/doc-on-backend/payment", paymentRouter);
-app.use("/api/v1/doc-on-backend/transaction", transactionRouter);
-app.use("/api/v1/doc-on-backend/doctor", doctorRouter);
-app.use("/api/v1/doc-on-backend/patient", patientRouter);
-app.use("/api/v1/doc-on-backend/subscription_plans", subscriptionRouter);
-app.use("/api/v1/doc-on-backend/appointment", appointmentRouter);
-app.use("/api/v1/doc-on-backend/admin", adminRouter);
+app.use("/api/v1/payment", paymentRouter);
+app.use("/api/v1/transaction", transactionRouter);
+app.use("/api/v1/doctor", doctorRouter);
+app.use("/api/v1/patient", patientRouter);
+app.use("/api/v1/subscription_plans", subscriptionRouter);
+app.use("/api/v1/appointment", appointmentRouter);
+app.use("/api/v1/admin", adminRouter);
 
 // Initialize Socket.IO only when the chat router is accessed
-app.use("/api/v1/doc-on-backend/chat", (req, res, next) => {
+app.use("/api/v1/chat", (req, res, next) => {
     if (!req.ioInitialized) {
         initializeSocket(server); // Initialize Socket.IO
         req.ioInitialized = true; // Prevent multiple initializations
