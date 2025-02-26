@@ -2,7 +2,7 @@ const express = require("express");
 const http = require("http");
 const { connectDB } = require("./config/database_config");
 const { initializeSocket } = require("./config/socket_config");
-const {watchMan}=require("./watchMan/watchMan");
+const {watchMan}=require("./watchMan/watchman");
 
 //Check transaction expiry date and update associate profile
 watchMan();
