@@ -46,25 +46,10 @@ const registerPatient = async (req, res) => {
           password: hashPassword,
         });
         const savePatient = await newPatient.save();
-        if (savePatient) {
-          const accessToken = jwt.sign(
-          {
-            patient: {
-              patientID: patient.patientID,
-              firstName: patient.firstName,
-              lastName: patient.lastName,
-              email: patient.email,
-              phoneNumber: patient.phoneNumber,
-              role:patient.role,
-            },
-          },
-          process.env.DOC_ON_PATIENT_KEY,
-          { expiresIn: "30d" }
-        );
-          
+          if (savePatient) {
           res.status(201).json({
             title: "Patient Registered Successfully",
-            token:accessToken
+            message:"You have successfully registered"
                });
         } else {
           res.status(400).json({
