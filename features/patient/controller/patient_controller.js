@@ -106,8 +106,6 @@ const patientLogin = async (req, res) => {
           {
             patient: {
               patientID: patient.patientID,
-              firstName: patient.firstName,
-              lastName: patient.lastName,
               email: patient.email,
               hasSubscription:patient.hasSubscription,
               phoneNumber: patient.phoneNumber,
@@ -118,7 +116,7 @@ const patientLogin = async (req, res) => {
         );
         res.status(200).json({
           title: "Login Successful",
-          token: accessToken,
+          user: {accessToken, ...patient._doc},
         });
       }
     }
